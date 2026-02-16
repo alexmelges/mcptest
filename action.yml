@@ -1,0 +1,12 @@
+name: 'MCPTest'
+description: 'CI-native testing for MCP servers'
+inputs:
+  config:
+    description: 'Path to mcptest.yaml'
+    default: 'mcptest.yaml'
+  format:
+    description: 'Output format: text, json, markdown'
+    default: 'text'
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
