@@ -61,6 +61,7 @@ npx mcptest --format json
 ## Features
 
 - **13 assertion types** — tool calls, schemas, counts, regex, JSON schema, response time
+- **3 transport types** — stdio, SSE, and Streamable HTTP
 - **3 output formats** — text (colored), JSON (CI), markdown (PR comments)  
 - **Zero config demo** — `npx mcptest --demo` to see it work instantly
 - **YAML test definitions** — readable, version-controllable, reviewable
@@ -112,6 +113,33 @@ jobs:
         with:
           config: mcptest.yaml
 ```
+
+## Transport Types
+
+MCPTest supports all MCP transport types:
+
+```yaml
+# Stdio (default) — local servers
+server:
+  command: "node"
+  args: ["./my-server.js"]
+
+# SSE — remote servers with Server-Sent Events
+server:
+  transport: sse
+  url: "http://localhost:3000/sse"
+  headers:
+    Authorization: "Bearer my-token"
+
+# Streamable HTTP — modern remote servers
+server:
+  transport: streamable-http
+  url: "http://localhost:3000/mcp"
+  headers:
+    Authorization: "Bearer my-token"
+```
+
+No `transport` field defaults to `stdio` for backward compatibility.
 
 ## Full Example
 
