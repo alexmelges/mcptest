@@ -3,10 +3,20 @@ import { parse as parseYaml } from "yaml";
 
 // --- Types ---
 
+export type TransportType = "stdio" | "sse" | "streamable-http";
+
 export interface ServerConfig {
-  command: string;
+  /** Transport type. Defaults to 'stdio' if omitted. */
+  transport?: TransportType;
+
+  // stdio fields
+  command?: string;
   args?: string[];
   env?: Record<string, string>;
+
+  // sse / streamable-http fields
+  url?: string;
+  headers?: Record<string, string>;
 }
 
 export interface Assertion {
@@ -66,14 +76,32 @@ export function validateConfig(config: unknown): McpTestConfig {
     throw new Error("Config must have a 'server' section");
   }
   const server = c.server as Record<string, unknown>;
-  if (typeof server.command !== "string" || !server.command) {
-    throw new Error("server.command must be a non-empty string");
+  const transport = (server.transport as string) ?? "stdio";
+  const VALID_TRANSPORTS: TransportType[] = ["stdio", "sse", "streamable-http"];
+  if (!VALID_TRANSPORTS.includes(transport as TransportType)) {
+    throw new Error(
+      `server.transport must be one of: ${VALID_TRANSPORTS.join(", ")}`
+    );
   }
-  if (server.args !== undefined && !Array.isArray(server.args)) {
-    throw new Error("server.args must be an array");
-  }
-  if (server.env !== undefined && typeof server.env !== "object") {
-    throw new Error("server.env must be an object");
+
+  if (transport === "stdio") {
+    if (typeof server.command !== "string" || !server.command) {
+      throw new Error("server.command must be a non-empty string");
+    }
+    if (server.args !== undefined && !Array.isArray(server.args)) {
+      throw new Error("server.args must be an array");
+    }
+    if (server.env !== undefined && typeof server.env !== "object") {
+      throw new Error("server.env must be an object");
+    }
+  } else {
+    // sse or streamable-http
+    if (typeof server.url !== "string" || !server.url) {
+      throw new Error("server.url must be a non-empty string for sse/streamable-http transport");
+    }
+    if (server.headers !== undefined && typeof server.headers !== "object") {
+      throw new Error("server.headers must be an object");
+    }
   }
 
   // Validate tests
@@ -128,6 +156,29 @@ export function loadConfig(filePath: string): McpTestConfig {
 // --- Init ---
 
 const SAMPLE_CONFIG = `# mcptest.yaml — MCP server test suite
+#
+# Transport options:
+#   stdio (default):
+#     server:
+#       command: "node"
+#       args: ["./my-mcp-server.js"]
+#       env:
+#         API_KEY: "test-key"
+#
+#   sse:
+#     server:
+#       transport: sse
+#       url: "http://localhost:3000/sse"
+#       headers:
+#         Authorization: "Bearer token"
+#
+#   streamable-http:
+#     server:
+#       transport: streamable-http
+#       url: "http://localhost:3000/mcp"
+#       headers:
+#         Authorization: "Bearer token"
+
 server:
   command: "node"
   args: ["./my-mcp-server.js"]

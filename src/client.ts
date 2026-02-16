@@ -1,5 +1,8 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { ServerConfig } from "./config.js";
 
 export interface McpTool {
@@ -28,7 +31,7 @@ export interface ToolCallResult {
 
 export class McpClient {
   private client: Client;
-  private transport: StdioClientTransport | null = null;
+  private transport: Transport | null = null;
 
   constructor() {
     this.client = new Client(
@@ -38,14 +41,40 @@ export class McpClient {
   }
 
   async connect(serverConfig: ServerConfig): Promise<void> {
-    this.transport = new StdioClientTransport({
-      command: serverConfig.command,
-      args: serverConfig.args,
-      env: serverConfig.env
-        ? { ...process.env, ...serverConfig.env } as Record<string, string>
-        : undefined,
-    });
-    await this.client.connect(this.transport);
+    const transportType = serverConfig.transport ?? "stdio";
+
+    switch (transportType) {
+      case "stdio":
+        this.transport = new StdioClientTransport({
+          command: serverConfig.command!,
+          args: serverConfig.args,
+          env: serverConfig.env
+            ? { ...process.env, ...serverConfig.env } as Record<string, string>
+            : undefined,
+        });
+        break;
+
+      case "sse":
+        this.transport = new SSEClientTransport(new URL(serverConfig.url!), {
+          requestInit: serverConfig.headers
+            ? { headers: serverConfig.headers }
+            : undefined,
+        });
+        break;
+
+      case "streamable-http":
+        this.transport = new StreamableHTTPClientTransport(
+          new URL(serverConfig.url!),
+          {
+            requestInit: serverConfig.headers
+              ? { headers: serverConfig.headers }
+              : undefined,
+          }
+        );
+        break;
+    }
+
+    await this.client.connect(this.transport!);
   }
 
   async listTools(): Promise<McpTool[]> {

@@ -143,6 +143,120 @@ describe("validateConfig", () => {
       })
     ).toThrow("args");
   });
+
+  // --- Transport validation ---
+
+  it("defaults to stdio when transport is omitted (backward compat)", () => {
+    const config = validateConfig({
+      server: { command: "node", args: ["server.js"] },
+      tests: [
+        { name: "t", action: "list_tools", assert: [{ type: "success" }] },
+      ],
+    });
+    expect(config.server.transport).toBeUndefined();
+    expect(config.server.command).toBe("node");
+  });
+
+  it("accepts explicit stdio transport", () => {
+    const config = validateConfig({
+      server: { transport: "stdio", command: "node" },
+      tests: [
+        { name: "t", action: "list_tools", assert: [{ type: "success" }] },
+      ],
+    });
+    expect(config.server.transport).toBe("stdio");
+  });
+
+  it("accepts sse transport with url", () => {
+    const config = validateConfig({
+      server: { transport: "sse", url: "http://localhost:3000/sse" },
+      tests: [
+        { name: "t", action: "list_tools", assert: [{ type: "success" }] },
+      ],
+    });
+    expect(config.server.transport).toBe("sse");
+    expect(config.server.url).toBe("http://localhost:3000/sse");
+  });
+
+  it("accepts streamable-http transport with url", () => {
+    const config = validateConfig({
+      server: { transport: "streamable-http", url: "http://localhost:3000/mcp" },
+      tests: [
+        { name: "t", action: "list_tools", assert: [{ type: "success" }] },
+      ],
+    });
+    expect(config.server.transport).toBe("streamable-http");
+  });
+
+  it("accepts sse transport with headers", () => {
+    expect(() =>
+      validateConfig({
+        server: {
+          transport: "sse",
+          url: "http://localhost:3000/sse",
+          headers: { Authorization: "Bearer token" },
+        },
+        tests: [
+          { name: "t", action: "list_tools", assert: [{ type: "success" }] },
+        ],
+      })
+    ).not.toThrow();
+  });
+
+  it("rejects invalid transport type", () => {
+    expect(() =>
+      validateConfig({
+        server: { transport: "websocket", command: "node" },
+        tests: [
+          { name: "t", action: "list_tools", assert: [{ type: "success" }] },
+        ],
+      })
+    ).toThrow("transport");
+  });
+
+  it("rejects sse transport without url", () => {
+    expect(() =>
+      validateConfig({
+        server: { transport: "sse" },
+        tests: [
+          { name: "t", action: "list_tools", assert: [{ type: "success" }] },
+        ],
+      })
+    ).toThrow("url");
+  });
+
+  it("rejects streamable-http transport without url", () => {
+    expect(() =>
+      validateConfig({
+        server: { transport: "streamable-http" },
+        tests: [
+          { name: "t", action: "list_tools", assert: [{ type: "success" }] },
+        ],
+      })
+    ).toThrow("url");
+  });
+
+  it("rejects non-object headers", () => {
+    expect(() =>
+      validateConfig({
+        server: { transport: "sse", url: "http://localhost:3000", headers: "bad" },
+        tests: [
+          { name: "t", action: "list_tools", assert: [{ type: "success" }] },
+        ],
+      })
+    ).toThrow("headers");
+  });
+
+  it("rejects stdio transport without command", () => {
+    expect(() =>
+      validateConfig({
+        server: { transport: "stdio" },
+        tests: [
+          { name: "t", action: "list_tools", assert: [{ type: "success" }] },
+        ],
+      })
+    ).toThrow("command");
+  });
 });
 
 describe("loadConfig", () => {
